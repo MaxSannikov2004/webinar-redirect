@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Переход на трансляцию</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 50px;
+    }
+    .logo {
+      width: 600px;
+      max-width: 100%;
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Логотип или заглушка -->
+  <img
+    class="logo"
+    src="https://downloader.disk.yandex.ru/preview/5f7c14cc327da0d7275e9f64dfec1a9de3c779b5d74e211b46859c65cab45f56/686d6f1b/3pEP6gxeHezeY3g7Ohnfyi3YAhsNd96YeMD4k29mEtI6Trl8sS8tQZAeeKmTEwfGe3IVcrdSJqUB1xLuUXO6Bg%3D%3D?uid=0&filename=%D0%9F%D0%B5%D1%80%D0%B5%D0%BF%D1%80%D0%B0%D0%B2%D0%BA%D0%B0.png&disposition=inline&hash=&limit=0&content_type=image%2Fpng&owner_uid=0&tknv=v3&size=2048x2048"
+    alt="Отмечаем посещение..."
+  />
+
+  <p>
+    Переход на трансляцию...<br />
+    Если вы не были перенаправлены, <a id="manual-link" href="#">нажмите здесь</a>
+  </p>
+
+  <script>
+    window.addEventListener('load', function () {
+      const params = new URLSearchParams(window.location.search);
+      const webinarLink = params.get('link') || '/';
+      const attId = params.get('att');
+      const sessionId = params.get('sessionid');
+
+      // Вставка ссылки для ручного перехода
+      const manualLinkElem = document.getElementById('manual-link');
+      manualLinkElem.href = webinarLink;
+
+      // Определяем источник
+      const isMoodleApp = navigator.userAgent.includes('MoodleMobile');
+      const source = isMoodleApp ? 'Приложение' : 'Браузер';
+
+      // Отправляем лог в Google Таблицу
+      fetch(
+        'https://script.google.com/macros/s/AKfycbxntSer57R6VGsDYy65X6Io1rtjN1xt3WQFVNSLeFu_bO1iByitlL0gLKU-6DnWTLF1/exec' +
+          '?source=' +
+          encodeURIComponent(source) +
+          '&link=' +
+          encodeURIComponent(webinarLink)
+      ).catch((err) => {
+        console.warn('Ошибка логирования:', err);
+      });
+
+      // Если это мобильное приложение — сразу переход
+      if (isMoodleApp) {
+        window.location.href = webinarLink;
+        return;
+      }
+
+      // Если нет параметров для отметки — сразу переход
+      if (!attId || !sessionId) {
+        window.location.href = webinarLink;
+        return;
+      }
+
+      // Создаём iframe для отметки посещаемости
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms');
+      iframe.src = `${window.location.origin}/mod/attendance/attendance.php?sessid=${sessionId}`;
+
+      iframe.onload = function () {
+        try {
+          const form = iframe.contentDocument.querySelector('form[action*="take.php"]');
+          if (form) {
+            form.submit();
+          } else {
+            console.warn('Форма для отметки не найдена');
+          }
+        } catch (e) {
+          console.error('Ошибка доступа к iframe:', e);
+        }
+      };
+
+      document.body.appendChild(iframe);
+
+      // Переход с задержкой 2 секунды
+      setTimeout(() => {
+        window.location.href = webinarLink;
+      }, 2000);
+    });
+  </script>
+
+</body>
+</html>
